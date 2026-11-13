@@ -36,10 +36,9 @@
       border-radius: 8px;
       font-size: 16px;
       cursor: pointer;
-      transition: background 0.2s;
-      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
     }
-    .btn:active { transform: scale(0.98); }
+    .btn:active { transform: scale(0.98); background-color: #2980b9; }
     .btn:disabled {
       background-color: #bdc3c7 !important;
       cursor: not-allowed;
@@ -72,26 +71,26 @@
   <div id="screen-login" class="screen active">
     <h2>期末テスト対策 サイト</h2>
     <p style="text-align:center; color:#666;">パスワードを入力してください</p>
-    <input type="password" id="site-password" placeholder="パスワード">
-    <button class="btn" onclick="checkSitePassword()">入室する</button>
+    <input type="password" id="site-password" placeholder="パスワード" enterkeyhint="go">
+    <button class="btn" id="login-btn">入室する</button>
     <p id="site-pw-error" style="color:red; display:none; text-align:center;">パスワードが違います</p>
   </div>
 
   <!-- 2. ホーム画面 -->
   <div id="screen-home" class="screen">
     <h2>ホーム画面</h2>
-    <button class="btn" id="btn-random" onclick="startQuiz('random')" style="background-color:#2ecc71;">🎲 ランダム出題 (10問)</button>
+    <button class="btn" id="btn-random" style="background-color:#2ecc71;">🎲 ランダム出題 (10問)</button>
     <div class="grid" id="subject-buttons-grid"></div>
     <hr style="margin: 15px 0; border:0; border-top:1px solid #eee;">
-    <button class="btn btn-secondary" onclick="showScreen('screen-settings')">⚙️ タイマー設定</button>
+    <button class="btn btn-secondary" id="settings-btn">⚙️ タイマー設定</button>
   </div>
 
   <!-- 3. 設定画面 -->
   <div id="screen-settings" class="screen">
     <h2>タイマー設定 (1~90秒)</h2>
     <div id="timer-settings-list"></div>
-    <button class="btn" onclick="saveSettings()">設定を保存</button>
-    <button class="btn btn-secondary" onclick="showScreen('screen-home')">ホームへ戻る</button>
+    <button class="btn" id="save-settings-btn">設定を保存</button>
+    <button class="btn btn-secondary" id="back-home-btn">ホームへ戻る</button>
   </div>
 
   <!-- 4. クイズ画面 -->
@@ -102,9 +101,9 @@
     </div>
     <div class="timer" id="timer-display">残り時間: 30 秒</div>
     <div class="q-box" id="quiz-question-text">問題文がここに入ります</div>
-    <input type="text" id="quiz-user-input" placeholder="答えを入力してください">
-    <button class="btn" onclick="submitAnswer()">回答する</button>
-    <button class="btn btn-danger" onclick="quitQuiz()" style="margin-top:5px; padding:10px;">途中でやめる</button>
+    <input type="text" id="quiz-user-input" placeholder="答えを入力してください" autocomplete="off">
+    <button class="btn" id="submit-ans-btn">回答する</button>
+    <button class="btn btn-danger" id="quit-quiz-btn" style="margin-top:5px; padding:10px;">途中でやめる</button>
   </div>
 
   <!-- 5. 結果・復習画面 -->
@@ -112,24 +111,21 @@
     <h2>結果発表</h2>
     <div id="result-summary"></div>
     <div id="result-details"></div>
-    <button id="btn-retry" class="btn" onclick="startRetry()" style="display:none; background-color:#e67e22;">間違えた問題をもう一度解く</button>
-    <button class="btn btn-secondary" onclick="showScreen('screen-home')">ホームへ戻る</button>
+    <button id="btn-retry" class="btn" style="display:none; background-color:#e67e22;">間違えた問題をもう一度解く</button>
+    <button class="btn btn-secondary" id="result-home-btn">ホームへ戻る</button>
   </div>
 
 </div>
 
 <script>
-  const SITE_PASS = "1234";
+  const SITE_PASS = "toyonaka11";
   const subjects = ["社会", "保健体育", "技術", "家庭科"];
 
-  // デフォルトの設定時間をすべて30秒に指定
   let settingsTimes = JSON.parse(localStorage.getItem('quiz_settings_times')) || {
     "社会": 30, "保健体育": 30, "技術": 30, "家庭科": 30
   };
 
-  // 主語を明確に修正した問題データ
-  const questions = [
-    // --- 社会 ---
+  const questionsData = [
     { id: 101, subject: "社会", text: "アフリカの熱帯気候は、アフリカのどこの部にあるか？", answer: "北", alt: "北部" },
     { id: 102, subject: "社会", text: "アフリカのサバナ気候はアフリカのどこの部にあり、とうもろこしが作られるか？", answer: "中央", alt: "中央部" },
     { id: 103, subject: "社会", text: "アフリカのステップ気候は、「北」とアフリカのどこにあるか？", answer: "南", alt: "南部" },
@@ -208,7 +204,6 @@
     { id: 176, subject: "社会", text: "オセアニアの北西部では鉄鉱石、東部では石炭の採掘、北部・西部では何の露天掘りが行われているか？", answer: "ボーキサイト", alt: "" },
     { id: 177, subject: "社会", text: "オセアニアの大陸西部では小麦の栽培、東部では何が行われているか？", answer: "酪農", alt: "" },
 
-    // --- 保健体育 ---
     { id: 201, subject: "保健体育", text: "体の大きさや重さが増すことを何というか？", answer: "発育", alt: "" },
     { id: 202, subject: "保健体育", text: "体の働きが高まることを何というか？", answer: "発達", alt: "" },
     { id: 203, subject: "保健体育", text: "身長や体重が急に発育する時期を何というか？", answer: "発育急進期", alt: "" },
@@ -240,7 +235,6 @@
     { id: 229, subject: "保健体育", text: "ストレスに対処するには、原因を対処したり、何を見直すことが大事か？", answer: "受け止め方", alt: "" },
     { id: 230, subject: "保健体育", text: "ストレス対処のため、信頼できる人に相談したり、コミュニケーションの力を身につけたり、何することも重要か？", answer: "リラックス", alt: "" },
 
-    // --- 技術 ---
     { id: 301, subject: "技術", text: "技術の分野で、木材を切るときに引く線を何というか？", answer: "けがき線", alt: "けがきせん" },
     { id: 302, subject: "技術", text: "直角を測る定規：直角定規ともう一つは何か？", answer: "さしがね", alt: "差し金" },
     { id: 303, subject: "技術", text: "釘を打つための穴を開けるのに使う道具は？", answer: "四つ目切り", alt: "よつめきり" },
@@ -264,7 +258,6 @@
     { id: 321, subject: "技術", text: "げんのうで釘を打つときは、最初は平面、終わりは材料が傷つかないように何を使うか？", answer: "曲面", alt: "" },
     { id: 322, subject: "技術", text: "釘を斜めに打ってしまったときの修正に使うのはくぎ抜きと何？", answer: "くぎしめ", alt: "" },
 
-    // --- 家庭科 ---
     { id: 401, subject: "家庭科", text: "食品を6つのグループに分けたものを何というか？", answer: "六つの食品群", alt: "6つの食品群" },
     { id: 402, subject: "家庭科", text: "食品群別の摂取量の目安と言い、実際の食品で食べるおおよその量を何というか？", answer: "食品の概量", alt: "概量" },
     { id: 403, subject: "家庭科", text: "1群の主な成分はタンパク質で、肉や魚、卵などの食品を何というか？", answer: "動物性食品", alt: "" },
@@ -291,13 +284,13 @@
     { id: 424, subject: "家庭科", text: "蒸し調理をするときは、下段に水を入れる。湯気が出たら一度火を止めて何を入れた上段を重ねるか？", answer: "食材", alt: "" },
     { id: 425, subject: "家庭科", text: "蓋から水滴が落ちて欲しくない場合は何を蓋にまくか？", answer: "布", alt: "" },
     { id: 426, subject: "家庭科", text: "さけのムニエル：バットに並べて魚に塩、こしょうを振っておくことで何が取れるか？", answer: "臭み", alt: "くさみ" },
-    { id: 427, subject: "家庭科", text: "さけのムニエル：焼く直전에何をまぶし、余分なものははたいて落とすか？", answer: "小麦粉", alt: "" },
+    { id: 427, subject: "家庭科", text: "さけのムニエル：焼く直前に何をまぶし、余分なものははたいて落とすか？", answer: "小麦粉", alt: "" },
     { id: 428, subject: "家庭科", text: "さけのムニエル：フライパンに油を敷き、中火で食べるときに表になる方をどうするか？", answer: "下側にする", alt: "下側" },
     { id: 429, subject: "家庭科", text: "さけのムニエル：3〜4分焼き、皮を何秒ほど焼き、裏側を弱火で3分焼くか？", answer: "20秒", alt: "20秒ほど" },
     { id: 430, subject: "家庭科", text: "さけのムニエル：火を止め余分な油をふき、中火にして何を入れて1〜2分火を通すか？", answer: "レモン汁とバター", alt: "レモン汁, バター" }
   ];
 
-  let questions = JSON.parse(localStorage.getItem('quiz_questions_v2')) || questionsData;
+  let questions = JSON.parse(localStorage.getItem('quiz_questions_v3')) || questionsData;
 
   function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -315,7 +308,11 @@
       const count = questions.filter(q => q.subject === sub).length;
       total += count;
       const isDisabled = count === 0 ? 'disabled' : '';
-      grid.innerHTML += `<button class="btn" ${isDisabled} onclick="startQuiz('${sub}')">${sub} (${count}問)</button>`;
+      grid.innerHTML += `<button class="btn subject-btn" data-subject="${sub}" ${isDisabled}>${sub} (${count}問)</button>`;
+    });
+
+    document.querySelectorAll('.subject-btn').forEach(btn => {
+      btn.addEventListener('click', () => startQuiz(btn.getAttribute('data-subject')));
     });
 
     const randomBtn = document.getElementById('btn-random');
@@ -329,7 +326,9 @@
   }
 
   function checkSitePassword() {
-    if(document.getElementById('site-password').value === SITE_PASS) {
+    const pwInput = document.getElementById('site-password').value;
+    if(pwInput === SITE_PASS) {
+      document.getElementById('site-pw-error').style.display = 'none';
       showScreen('screen-home');
     } else {
       document.getElementById('site-pw-error').style.display = 'block';
@@ -476,10 +475,23 @@
     showScreen('screen-quiz');
     loadQuestion();
   }
-  
-  // データの変数名調整用エイリアス
-  const questionsData = questions;
-  const SITE_PASS = "toyonaka11";
+
+  // --- イベントリスナーの登録 ---
+  document.getElementById('login-btn').addEventListener('click', checkSitePassword);
+  document.getElementById('site-password').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') checkSitePassword();
+  });
+  document.getElementById('btn-random').addEventListener('click', () => startQuiz('random'));
+  document.getElementById('settings-btn').addEventListener('click', () => showScreen('screen-settings'));
+  document.getElementById('save-settings-btn').addEventListener('click', saveSettings);
+  document.getElementById('back-home-btn').addEventListener('click', () => showScreen('screen-home'));
+  document.getElementById('submit-ans-btn').addEventListener('click', () => submitAnswer(false));
+  document.getElementById('quiz-user-input').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') submitAnswer(false);
+  });
+  document.getElementById('quit-quiz-btn').addEventListener('click', quitQuiz);
+  document.getElementById('btn-retry').addEventListener('click', startRetry);
+  document.getElementById('result-home-btn').addEventListener('click', () => showScreen('screen-home'));
 </script>
 
 </body>

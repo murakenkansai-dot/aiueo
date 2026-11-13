@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>期末テスト対策 友人限定クイズサイト</title>
+  <style>
+    body {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      background-color: #f0f4f8;
+      color: #333;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+    }
+    .container {
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 600px;
+      box-sizing: border-box;
+    }
+    h1, h2, h3 { text-align: center; color: #2c3e50; }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn:hover { background-color: #2980b9; }
+    .btn:disabled {
+      background-color: #bdc3c7 !important;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+    .btn-admin { background-color: #e74c3c; }
+    .btn-admin:hover { background-color: #c0392b; }
+    .btn-secondary { background-color: #7f8c8d; }
+    .btn-secondary:hover { background-color: #95a5a6; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    input[type="text"], input[type="password"], input[type="number"], select, textarea {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+    .screen { display: none; }
+    .active { display: block; }
+    .timer { font-size: 20px; font-weight: bold; color: #e74c3c; text-align: center; margin: 10px 0; }
+    .q-box { background: #eef2f7; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+    .list-item { background: #f8f9fa; padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px; position: relative; }
+    .del-btn { position: absolute; right: 10px; top: 10px; background: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- 1. サイト全体のパスワード入力画面 -->
+  <div id="screen-login" class="screen active">
+    <h2>期末テスト対策 鍵付きサイト</h2>
+    <p style="text-align:center;">パスワードを入力してください</p>
+    <input type="password" id="site-password" placeholder="パスワード">
+    <button class="btn" onclick="checkSitePassword()">入室する</button>
+    <p id="site-pw-error" style="color:red; display:none; text-align:center;">パスワードが違います</p>
+  </div>
+
+  <!-- 2. ホーム画面 -->
+  <div id="screen-home" class="screen">
+    <h2>ホーム画面</h2>
+    <button class="btn" id="btn-random" onclick="startQuiz('random')" style="background-color:#2ecc71;">🎲 ランダム出題 (10問)</button>
+    <div class="grid" id="subject-buttons-grid"></div>
+    <hr>
+    <button class="btn btn-secondary" onclick="showScreen('screen-settings')">⚙️ タイマー設定</button>
+    <button class="btn btn-admin" onclick="showScreen('screen-admin-login')">🔒 管理者ページ</button>
+  </div>
+
+  <!-- 3. 設定画面 -->
+  <div id="screen-settings" class="screen">
+    <h2>タイマー設定 (1~90秒)</h2>
+    <div id="timer-settings-list"></div>
+    <button class="btn" onclick="saveSettings()">設定を保存</button>
+    <button class="btn btn-secondary" onclick="showScreen('screen-home')">ホームへ戻る</button>
+  </div>
+
+  <!-- 4. 管理者ログイン画面 -->
+  <div id="screen-admin-login" class="screen">
+    <h2>管理者ログイン</h2>
+    <input type="password" id="admin-password" placeholder="管理者パスワード (初期: admin123)">
+    <button class="btn btn-admin" onclick="checkAdminPassword()">ログイン</button>
+    <p id="admin-pw-error" style="color:red; display:none; text-align:center;">パスワードが違います</p>
+    <button class="btn btn-secondary" onclick="showScreen('screen-home')">ホームへ戻る</button>
+  </div>
+
+  <!-- 5. 管理者ダッシュボード -->
+  <div id="screen-admin" class="screen">
+    <h2>管理者ページ</h2>
+    <h3>新しい問題の追加</h3>
+    <select id="new-q-subject">
+      <option value="社会">社会</option>
+      <option value="保健体育">保健体育</option>
+      <option value="技術">技術</option>
+      <option value="家庭科">家庭科</option>
+      <option value="国語">国語</option>
+      <option value="数学">数学</option>
+      <option value="理科">理科</option>
+      <option value="英語">英語</option>
+      <option value="音楽">音楽</option>
+    </select>
+    <textarea id="new-q-text" placeholder="問題文"></textarea>
+    <input type="text" id="new-q-answer" placeholder="正解 (例: 富士山)">
+    <input type="text" id="new-q-alt" placeholder="別解 (カンマ区切りで複数可)">
+    <button class="btn" onclick="addQuestion()">問題を登録</button>
+
+    <h3>登録済み問題一覧</h3>
+    <div id="admin-questions-list"></div>
+
+    <button class="btn btn-secondary" onclick="showScreen('screen-home')">ホームへ戻る</button>
+  </div>
+
+  <!-- 6. クイズ画面 -->
+  <div id="screen-quiz" class="screen">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <span id="quiz-progress" style="font-weight:bold;">第 1 問</span>
+      <span id="quiz-subject-tag" style="background:#ddd; padding:3px 8px; border-radius:4px;"></span>
+    </div>
+    <div class="timer" id="timer-display">残り時間: -- 秒</div>
+    <div class="q-box" id="quiz-question-text">問題文がここに入ります</div>
+    <input type="text" id="quiz-user-input" placeholder="答えを入力してください">
+    <button class="btn" onclick="submitAnswer()">回答する</button>
+  </div>
+
+  <!-- 7. 結果・復習画面 -->
+  <div id="screen-result" class="screen">
+    <h2>結果発表</h2>
+    <div id="result-summary"></div>
+    <div id="result-details"></div>
+    <button id="btn-retry" class="btn" onclick="startRetry()" style="display:none; background-color:#e67e22;">間違えた問題をもう一度解く</button>
+    <button class="btn btn-secondary" onclick="showScreen('screen-home')">ホームへ戻る</button>
+  </div>
+
+</div>
+
+<script>
+  const SITE_PASS = "1234";
+  const ADMIN_PASS = "admin123";
+
+  const subjects = ["国語", "数学", "理科", "社会", "英語", "音楽", "保健体育", "技術", "家庭科"];
+
+  let settingsTimes = JSON.parse(localStorage.getItem('quiz_settings_times')) || {
+    "国語": 10, "数学": 30, "理科": 30, "社会": 10,
+    "英語": 10, "音楽": 10, "保健体育": 10, "技術": 10, "家庭科": 10
+  };
+
+  // 送信された画像の全ての赤い部分を網羅した問題データ
+  let defaultQuestions = [
+    // --- 社会 ---
+    { id: 101, subject: "社会", text: "アフリカの熱帯気候はどこの部にあるか？", answer: "北", alt: "北部" },
+    { id: 102, subject: "社会", text: "アフリカのサバナ気候はどこの部にあり、とうもろこしが作られるか？", answer: "中央", alt: "中央部" },
+    { id: 103, subject: "社会", text: "アフリカのステップ気候は「北」とどこにあるか？", answer: "南", alt: "南部" },
+    { id: 104, subject: "社会", text: "アフリカの砂漠気候は主にどこの部にあり、かんがい農業が盛んか？", answer: "北", alt: "北部" },
+    { id: 105, subject: "社会", text: "アフリカの温帯気候はどこの部とエチオピア高原にあるか？", answer: "南", alt: "南部" },
+    { id: 106, subject: "社会", text: "アフリカ的地中海性気候はどこの部にあり、小麦・ぶどう・オリーブが作られるか？", answer: "北", alt: "北部" },
+    { id: 107, subject: "社会", text: "16世紀、ヨーロッパの人々がアフリカに進出し、原住民を何として連れ去ったか？", answer: "奴隷", alt: "" },
+    { id: 108, subject: "社会", text: "北アフリカの言語は何語か？", answer: "アラビア語", alt: "" },
+    { id: 109, subject: "社会", text: "南アフリカの言語は何語か？", answer: "スワヒリ語", alt: "" },
+    { id: 110, subject: "社会", text: "植民地時代、ヨーロッパ人が経営する大農園を何というか？", answer: "プランテーション", alt: "" },
+    { id: 111, subject: "社会", text: "ギニア湾岸で栽培されたものは何か？", answer: "カカオ", alt: "" },
+    { id: 112, subject: "社会", text: "ケニアなどで栽培されたものは何か？", answer: "花", alt: "" },
+    { id: 113, subject: "社会", text: "独立後、開発が進んでいる資源のうち、レアメタルや何か？", answer: "石油", alt: "" },
+    { id: 114, subject: "社会", text: "価格上昇によりナイジェリアなどが経済発展している資源は何か？", answer: "鉱資源", alt: "鉱物資源" },
+    { id: 115, subject: "社会", text: "近年、天然ガスの開発で期待されている国はどこか？", answer: "モザンビーク", alt: "" },
+    { id: 116, subject: "社会", text: "鉱資源をめぐって何が起こっているか？", answer: "紛争", alt: "" },
+    { id: 117, subject: "社会", text: "特定のものの輸出に経済を頼る課題を何というか？", answer: "モノカルチャー経済", alt: "モノカルチャー" },
+    { id: 118, subject: "社会", text: "アフリカは若い人が多く、何が続いているか？", answer: "経済の発展", alt: "経済発展" },
+    { id: 119, subject: "社会", text: "農村部から都市部に移住する人が増え、何が作られるか？", answer: "スラム", alt: "" },
+    { id: 120, subject: "社会", text: "植民地時代に作られた、民族の分布を無視した問題は何か？", answer: "国境", alt: "国境の問題" },
+    { id: 121, subject: "社会", text: "国境の問題は国だけでは解決できない。何の協力が必要か？", answer: "国際連合", alt: "国連" },
+    { id: 122, subject: "社会", text: "アフリカ連合(AU)は、何のために作られたか？", answer: "経済的政治的な繋がり", alt: "経済的、政治的な繋がり" },
+    { id: 123, subject: "社会", text: "日本がアフリカと開発を進めるために行う会議は何か？", answer: "国際会議", alt: "" },
+    { id: 124, subject: "社会", text: "日本が参加している非政府組織の略称は何か？", answer: "NGO", alt: "エヌジーオー" },
+    { id: 125, subject: "社会", text: "紛争で傷ついた人々の自立を助ける援助の略称は何か？", answer: "ODA", alt: "政府開発援助" },
+    { id: 126, subject: "社会", text: "北アメリカの気候で、寒帯・亜寒帯はどこにあるか？", answer: "北", alt: "北部" },
+    { id: 127, subject: "社会", text: "北アメリカの気候で、乾燥帯・温帯はどこにあるか？", answer: "中央", alt: "中央部" },
+    { id: 128, subject: "社会", text: "北アメリカの気候で、熱帯はどこにあるか？", answer: "南", alt: "南部" },
+    { id: 129, subject: "社会", text: "北アメリカで起こる熱帯低気圧の名称は？", answer: "ハリケーン", alt: "" },
+    { id: 130, subject: "社会", text: "もともと暮らしていたが土地を奪われた人々を何というか？", answer: "先住民", alt: "" },
+    { id: 131, subject: "社会", text: "アフリカから連れてこられて作られた、輸出用の作物は何と何か？", answer: "綿花やサトウキビ", alt: "綿花, サトウキビ" },
+    { id: 132, subject: "社会", text: "19世紀後半、世界各地から移民が来て何国家になったか？", answer: "多民族国家", alt: "" },
+    { id: 133, subject: "社会", text: "アメリカ・カナダで話されている言語は何か？", answer: "英語", alt: "" },
+    { id: 134, subject: "社会", text: "中央アメリカで話されている言語は何か？", answer: "スペイン語", alt: "" },
+    { id: 135, subject: "社会", text: "農業で利用されているのは、大型の機械や何か？", answer: "かんがい設備", alt: "灌漑設備" },
+    { id: 136, subject: "社会", text: "かつては家族経営の農場が多かったが、今は何が行われているか？", answer: "企業的農業", alt: "" },
+    { id: 137, subject: "社会", text: "ロッキー山脈付近で行われているのは何の放牧か？", answer: "肉牛", alt: "肉牛の放牧" },
+    { id: 138, subject: "社会", text: "中央高原で行われている農業は何か？", answer: "混合農業", alt: "" },
+    { id: 139, subject: "社会", text: "カナダ東部で行われている農業は何か？", answer: "酪農", alt: "" },
+    { id: 140, subject: "社会", text: "アメリカ東部で生産されているものは何か？", answer: "綿花、野菜、果物", alt: "綿花, 野菜, 果物" },
+    { id: 141, subject: "社会", text: "小麦、とうもろこし、大豆の輸出量が多く、何と呼ばれているか？", answer: "世界の食料庫", alt: "" },
+    { id: 142, subject: "社会", text: "農業にさまざまな技術を取り入れて産業化することを何というか？", answer: "アグリビジネス", alt: "" },
+    { id: 143, subject: "社会", text: "穀物を扱い、世界各地で売買をする企業などを何というか？", answer: "穀物メジャー", alt: "" },
+    { id: 144, subject: "社会", text: "石油や鉄鉱石の産地に近いどこで重工業が発展したか？", answer: "五大湖周辺", alt: "五大湖" },
+    { id: 145, subject: "社会", text: "デトロイトで始まった大量生産方式の工業は何か？", answer: "自動車工業", alt: "自動車" },
+    { id: 146, subject: "社会", text: "安くて何な工業製品を作り、アメリカの工業製品は次に弱ったか？", answer: "高品質", alt: "" },
+    { id: 147, subject: "社会", text: "大戦後、何の生産が発展し都市が短時間で結ばれたか？", answer: "航空機", alt: "航空機の生産" },
+    { id: 148, subject: "社会", text: "アメリカ航空宇宙局の略称は何か？", answer: "NASA", alt: "ナサ" },
+    { id: 149, subject: "社会", text: "アメリカ・カナダ・メキシコで貿易を自由にする組織の略称は？", answer: "USMCA", alt: "" },
+    { id: 150, subject: "社会", text: "メキシコはどこが安いため多くの工場が移転したか？", answer: "賃金", alt: "" },
+    { id: 151, subject: "社会", text: "一部の州で行われている、缶を店に返すと現金がもらえる制度は？", answer: "デポジット制", alt: "デポジット" },
+    { id: 152, subject: "社会", text: "ヨーロッパ系以外のものに対する何が消えないか？", answer: "差別", alt: "" },
+    { id: 153, subject: "社会", text: "民族の何が変化をもたらし、差別の解消が期待されているか？", answer: "多様化", alt: "" },
+    { id: 154, subject: "社会", text: "南アメリカの気候：北部は寒帯、中央部は温帯や乾燥帯、南部は何か？", answer: "温帯", alt: "" },
+    { id: 155, subject: "社会", text: "アマゾン流域は人口密度が低く、どこなどは人口密度が高いか？", answer: "大西洋沿岸", alt: "" },
+    { id: 156, subject: "社会", text: "コーヒーや大豆の栽培をしている国はどこか？", answer: "ブラジル", alt: "" },
+    { id: 157, subject: "社会", text: "放牧や小麦などの栽培をしている地域はどこか？", answer: "パンパ", alt: "" },
+    { id: 158, subject: "社会", text: "ブラジルの鉄鉱石、チリの銅、ベネズエラやエクアドルで採れるものは？", answer: "レアメタル", alt: "" },
+    { id: 159, subject: "社会", text: "うず巻き状に採掘をすることを何というか？", answer: "露天掘り", alt: "ろてんぼり" },
+    { id: 160, subject: "社会", text: "スペイン人やポルトガル人が進出し、それまでの社会をどうしたか？", answer: "滅ぼした", alt: "滅ぼす" },
+    { id: 161, subject: "社会", text: "奴隷になったアフリカ人を連れてきて、人々で何が進んだか？", answer: "混血", alt: "" },
+    { id: 162, subject: "社会", text: "先住民とヨーロッパ系の混血を何というか？", answer: "メスチソ", alt: "" },
+    { id: 163, subject: "社会", text: "スペイン語やポルトガル語が何である事が多いか？", answer: "公用語", alt: "" },
+    { id: 164, subject: "社会", text: "農業の工業化で仕事のなくなった人が都市部へいき何が作られたか？", answer: "スラム", alt: "" },
+    { id: 165, subject: "社会", text: "生活環境の改善に設置されているものは何か？", answer: "太陽光パネル", alt: "太陽光パネルなどの設置" },
+    { id: 166, subject: "社会", text: "熱帯雨林の消失は、日本の国土面積の何倍の面積か？", answer: "2倍", alt: "２倍" },
+    { id: 167, subject: "社会", text: "熱帯雨林は多様な生物の生活の場で、何を守っているか？", answer: "生態系", alt: "" },
+    { id: 168, subject: "社会", text: "広範囲を何すると、地表が乾いたり雨で侵食したりする？", answer: "伐採", alt: "" },
+    { id: 169, subject: "社会", text: "有害物質が川に流出すると、何を通じて健康被害が出るか？", answer: "魚", alt: "" },
+    { id: 170, subject: "社会", text: "輸出用の作物の栽培が増え、何の生産が難しいか？", answer: "自給用", alt: "自給用の生産" },
+    { id: 171, subject: "社会", text: "サトウキビや大豆から作られる何で走る車が普及しているか？", answer: "バイオ燃料", alt: "" },
+    { id: 172, subject: "社会", text: "熱帯雨林の不法伐採を防ぐため、何を使って監視しているか？", answer: "人工衛星", alt: "" },
+    { id: 173, subject: "社会", text: "オセアニアはオーストラリア大陸と島々からなり、何が少ないか？", answer: "地震", alt: "" },
+    { id: 174, subject: "社会", text: "オセアニアの熱帯は、島々と大陸のどこにあるか？", answer: "北", alt: "北部" },
+    { id: 175, subject: "社会", text: "先住民アボリジニが所有している土地は多いか少ないか？", answer: "多い", alt: "おおい" },
+    { id: 176, subject: "社会", text: "北西部では鉄鉱石、東部では石炭の採掘、北部・西部では何の露天掘りが行われているか？", answer: "ボーキサイト", alt: "" },
+    { id: 177, subject: "社会", text: "大陸西部では小麦の栽培、東部では何が行われているか？", answer: "酪農", alt: "" },
+
+    // --- 保健体育 ---
+    { id: 201, subject: "保健体育", text: "体の大きさや重さが増すこと…", answer: "発育", alt: "" },
+    { id: 202, subject: "保健体育", text: "体の働きが高まること…", answer: "発達", alt: "" },
+    { id: 203, subject: "保健体育", text: "身長や体重が急に発育する時期を何というか？", answer: "発育急進期", alt: "" },
+    { id: 204, subject: "保健体育", text: "思春期には多くの何（骨、筋肉など）が成長するか？", answer: "器官", alt: "" },
+    { id: 205, subject: "保健体育", text: "すでに成長している体の部位は、骨や何ことか？", answer: "脊椎", alt: "せきつい" },
+    { id: 206, subject: "保健体育", text: "発育には何があるか？", answer: "個人差", alt: "" },
+    { id: 207, subject: "保健体育", text: "鼻・肺・喉・気管支などを何と言うか？", answer: "呼吸器", alt: "" },
+    { id: 208, subject: "保健体育", text: "酸素を取り込み二酸化炭素を排出することを何というか？", answer: "ガス交換", alt: "" },
+    { id: 209, subject: "保健体育", text: "心臓・動脈・静脈・毛細血管などを何と言うか？", answer: "循環器", alt: "" },
+    { id: 210, subject: "保健体育", text: "心臓が発育すると拍出量が増大し何が減少するか？", answer: "心拍数", alt: "" },
+    { id: 211, subject: "保健体育", text: "生殖器は、思春期に何が脳の下垂体から分泌され発育するか？", answer: "性腺刺激ホルモン", alt: "性腺刺激ホルモン分泌" },
+    { id: 212, subject: "保健体育", text: "精巣からは男性ホルモン、卵巣からは何ホルモンが分泌されるか？", answer: "女性ホルモン", alt: "" },
+    { id: 213, subject: "保健体育", text: "卵巣は、卵子をどうするか？", answer: "成熟させる", alt: "成熟" },
+    { id: 214, subject: "保健体育", text: "卵管は卵巣と子宮の通り道で、ここで精子と何が出会うか？", answer: "卵子", alt: "" },
+    { id: 215, subject: "保健体育", text: "子宮は何を育てるか？", answer: "受精卵", alt: "" },
+    { id: 216, subject: "保健体育", text: "膣は男性期を受け入れ何を導くか？", answer: "精子", alt: "" },
+    { id: 217, subject: "保健体育", text: "受精が行われなかった場合に行われるものを何というか？", answer: "月経", alt: "" },
+    { id: 218, subject: "保健体育", text: "初めての月経のことを何というか？", answer: "初経", alt: "" },
+    { id: 219, subject: "保健体育", text: "男子の体では、精巣で何が作られるか？", answer: "精子", alt: "" },
+    { id: 220, subject: "保健体育", text: "精のうは、精子が運動するために必要な養分と何を分泌するか？", answer: "精のう液", alt: "せいのう液" },
+    { id: 221, subject: "保健体育", text: "尿道は、尿と何を排出するか？", answer: "精液", alt: "" },
+    { id: 222, subject: "保健体育", text: "射精とは、精液がどこを通って排出されることか？", answer: "尿道", alt: "" },
+    { id: 223, subject: "保健体育", text: "初めての射精を何というか？", answer: "精通", alt: "" },
+    { id: 224, subject: "保健体育", text: "精子が卵子に入ると受精が成立し、受精後の卵を何というか？", answer: "受精卵", alt: "" },
+    { id: 225, subject: "保健体育", text: "受精卵は子宮内膜で発育を始め、これを何というか？", answer: "着床", alt: "" },
+    { id: 226, subject: "保健体育", text: "脳と体が自律神経やホルモンを通して影響しあうことを何というか？", answer: "心身相関", alt: "" },
+    { id: 227, subject: "保健体育", text: "心や体に負荷がかかることをストレスと言い、その原因を何というか？", answer: "ストレッサー", alt: "" },
+    { id: 228, subject: "保健体育", text: "ストレスの原因には季節や体調の変化、進路や勉強の悩み、何の悩みなどがあるか？", answer: "人間関係", alt: "人間関係の悩み" },
+    { id: 229, subject: "保健体育", text: "ストレスを対処するには、原因を対処したり、何を見直すことが大事か？", answer: "受け止め方", alt: "" },
+    { id: 230, subject: "保健体育", text: "ストレス対処のため、信頼できる人に相談したり、コミュニケーションの力を身につけたり、何することも重要か？", answer: "リラックス", alt: "" },
+
+    // --- 技術 ---
+    { id: 301, subject: "技術", text: "木材を切るときに引く線を何というか？", answer: "けがき線", alt: "けがきせん" },
+    { id: 302, subject: "技術", text: "直角を測る定規：直角定規／（順不同でもう一つは？）", answer: "さしがね", alt: "差し金" },
+    { id: 303, subject: "技術", text: "釘を打つための穴を開けるのに使う道具は？", answer: "四つ目切り", alt: "よつめきり" },
+    { id: 304, subject: "技術", text: "机に切る木材を固定する道具は？", answer: "F型クランプ", alt: "エフ型クランプ" },
+    { id: 305, subject: "技術", text: "木材を削るときに使う道具は？", answer: "ドレッサ", alt: "" },
+    { id: 306, subject: "技術", text: "金属の木材用のやすりは何か？", answer: "木工やすり", alt: "木工ヤスリ" },
+    { id: 307, subject: "技術", text: "紙のやすりは何か？", answer: "研磨紙", alt: "" },
+    { id: 308, subject: "技術", text: "打った釘を抜く道具は？", answer: "くぎ抜き", alt: "クギヌキ" },
+    { id: 309, subject: "技術", text: "狭い場所に釘を打つ場合などに使う道具は？", answer: "くぎしめ", alt: "クギシメ" },
+    { id: 310, subject: "技術", text: "回転する刃で木材に穴を開ける機械は？", answer: "卓上ボール盤", alt: "ボール盤" },
+    { id: 311, subject: "技術", text: "木材を曲線などに切れる機械は？", answer: "糸のこ盤", alt: "糸鋸盤" },
+    { id: 312, subject: "技術", text: "両刃ののこぎりの持ち手を柄と言い、刃側を何というか？", answer: "柄がしら", alt: "柄頭" },
+    { id: 313, subject: "技術", text: "両刃ののこぎりの反対側を何というか？", answer: "柄じり", alt: "柄尻" },
+    { id: 314, subject: "技術", text: "金属の部分の根本から一番先までののこ身と言い、刃がついている部分の長さを何というか？", answer: "刃わたり", alt: "刃渡り" },
+    { id: 315, subject: "技術", text: "刃の先端の幅のことで、横幅に触れるため摩擦が少なくなっている幅のことを何というか？", answer: "あさり", alt: "" },
+    { id: 316, subject: "技術", text: "木材の繊維方向で、縦向きに切るときはどれを使うか？", answer: "縦びき刃", alt: "縦引き刃" },
+    { id: 317, subject: "技術", text: "木材の繊維方向で、横向きに切るときはどれを使うか？", answer: "横びき刃", alt: "横引き刃" },
+    { id: 318, subject: "技術", text: "釘を打ち付ける道具を何というか？", answer: "げんのう", alt: "ゲンノウ" },
+    { id: 319, subject: "技術", text: "げんのうの金属部の凸面を曲面、凹面は何というか？", answer: "平面", alt: "平な面" },
+    { id: 320, subject: "技術", text: "道具を使うときは、何を視点にして手首も使って打つか？", answer: "ひじ", alt: "肘" },
+    { id: 321, subject: "技術", text: "最初は平面、終わりは材料が傷つかないように何を使うか？", answer: "曲面", alt: "" },
+    { id: 322, subject: "技術", text: "斜めに打ってしまったときの修正に使うのはくぎ抜きと何？", answer: "くぎしめ", alt: "" },
+
+    // --- 家庭科 ---
+    { id: 401, subject: "家庭科", text: "食品を6つのグループに分けたものを何というか？", answer: "六つの食品群", alt: "6つの食品群" },
+    { id: 402, subject: "家庭科", text: "食品群別の摂取量の目安と言い、実際の食品で食べるおおよその量を何というか？", answer: "食品の概量", alt: "概量" },
+    { id: 403, subject: "家庭科", text: "1群の主な成分はタンパク質で、肉や魚、卵などの食品を何というか？", answer: "動物性食品", alt: "" },
+    { id: 404, subject: "家庭科", text: "豆製品などを何というか？", answer: "植物性食品", alt: "" },
+    { id: 405, subject: "家庭科", text: "卵は一個何gか？", answer: "50〜60g", alt: "50~60g" },
+    { id: 406, subject: "家庭科", text: "卵の摂取量は、女子は300g、男子は何g摂ることが望ましいか？", answer: "330g", alt: "" },
+    { id: 407, subject: "家庭科", text: "2群はカルシュウム（カルシウム）を多く含む食品などで、何が当てはまるか？", answer: "乳製品", alt: "" },
+    { id: 408, subject: "家庭科", text: "牛乳や乳製品はタンパク質や何なども含んでいるか？", answer: "ビタミンB2", alt: "ビタミンB２" },
+    { id: 409, subject: "家庭科", text: "海藻類は何の重量で計算するか？", answer: "戻した後の重量", alt: "戻したあと" },
+    { id: 410, subject: "家庭科", text: "2群は何g摂るのが望ましいか？", answer: "400g", alt: "" },
+    { id: 411, subject: "家庭科", text: "3群は緑黄色野菜という色の濃い野菜で、何を多く含んでいるか？", answer: "カロテン", alt: "" },
+    { id: 412, subject: "家庭科", text: "3群は何g摂るのが望ましいか？", answer: "100g", alt: "" },
+    { id: 413, subject: "家庭科", text: "4群はそのほかの野菜で、色が薄い。多く含まれているものはビタミンC、カルシウム、鉄と何か？", answer: "食物繊維", alt: "" },
+    { id: 414, subject: "家庭科", text: "4群は何g摂るのが望ましいか？その中で野菜は何g、果物は何gか？", answer: "400g", alt: "400g" },
+    { id: 415, subject: "家庭科", text: "5群は穀物や芋などで、主な成分は何か？", answer: "炭水化物", alt: "" },
+    { id: 416, subject: "家庭科", text: "芋類には何が多く含まれているか？", answer: "でんぷん", alt: "デンプン" },
+    { id: 417, subject: "家庭科", text: "主食である何もこれに当てはまるか？", answer: "米飯", alt: "お米" },
+    { id: 418, subject: "家庭科", text: "5群は女子は650g、男子は何g摂ることが望ましいか？", answer: "700g", alt: "" },
+    { id: 419, subject: "家庭科", text: "6群は主な成分が何か？", answer: "脂質", alt: "" },
+    { id: 420, subject: "家庭科", text: "動物性油脂と、大豆油などの何を植物性油脂に分けられるか？", answer: "ごま油", alt: "ゴマ油" },
+    { id: 421, subject: "家庭科", text: "6群は女子は20g、男子は何g摂ることが望ましいか？", answer: "25g", alt: "" },
+    { id: 422, subject: "家庭科", text: "食事の際の料理の組み合わせを何というか？", answer: "献立", alt: "こんだて" },
+    { id: 423, subject: "家庭科", text: "食事の組み合わせは主食、主菜、副菜、何で考えると良いか？", answer: "汁物", alt: "しるもの" },
+    { id: 424, subject: "家庭科", text: "蒸し調理をするときは、下段に水を入れる。湯気が出たら一度火を止めて何を入れた上段を重ねるか？", answer: "食材", alt: "" },
+    { id: 425, subject: "家庭科", text: "蓋から水滴が落ちて欲しくない場合は何を蓋にまくか？", answer: "布", alt: "" },
+    { id: 426, subject: "家庭科", text: "さけのムニエル：バットに並べて魚に塩、こしょうを振っておくことで何が取れるか？", answer: "臭み", alt: "くさみ" },
+    { id: 427, subject: "家庭科", text: "焼く直前に何をまぶし、余分なものははたいて落とすか？", answer: "小麦粉", alt: "" },
+    { id: 428, subject: "家庭科", text: "フライパンに油を敷き、中火で食べるときに表になる方をどうするか？", answer: "下側にする", alt: "下側" },
+    { id: 429, subject: "家庭科", text: "3〜4分焼き、皮を何秒ほど焼き、裏側を弱火で3分焼くか？", answer: "20秒", alt: "20秒ほど" },
+    { id: 430, subject: "家庭科", text: "火を止め余分な油をふき、中火にして何を入れて1〜2分火を通すか？", answer: "レモン汁とバター", alt: "レモン汁, バター" }
+  ];
+
+  let questions = JSON.parse(localStorage.getItem('quiz_questions')) || defaultQuestions;
+
+  // --- 画面切り替え関数 ---
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    if(id === 'screen-home') renderHome();
+    if(id === 'screen-settings') renderSettings();
+    if(id === 'screen-admin') renderAdminQuestions();
+  }
+
+  // --- ホーム画面の描画（問題がない教科のボタンを無効化） ---
+  function renderHome() {
+    const grid = document.getElementById('subject-buttons-grid');
+    grid.innerHTML = '';
+
+    let totalAvailableQuestions = 0;
+
+    subjects.forEach(sub => {
+      const count = questions.filter(q => q.subject === sub).length;
+      totalAvailableQuestions += count;
+      const isDisabled = count === 0 ? 'disabled' : '';
+      const buttonText = count === 0 ? `${sub} (問題なし)` : `${sub} (${count}問)`;
+
+      grid.innerHTML += `
+        <button class="btn" ${isDisabled} onclick="startQuiz('${sub}')">${buttonText}</button>
+      `;
+    });
+
+    const randomBtn = document.getElementById('btn-random');
+    if(totalAvailableQuestions === 0) {
+      randomBtn.disabled = true;
+      randomBtn.innerText = "🎲 ランダム出題 (問題なし)";
+    } else {
+      randomBtn.disabled = false;
+      randomBtn.innerText = "🎲 ランダム出題 (10問)";
+    }
+  }
+
+  // --- パスワード確認 ---
+  function checkSitePassword() {
+    if(document.getElementById('site-password').value === SITE_PASS) {
+      showScreen('screen-home');
+    } else {
+      document.getElementById('site-pw-error').style.display = 'block';
+    }
+  }
+
+  function checkAdminPassword() {
+    if(document.getElementById('admin-password').value === ADMIN_PASS) {
+      showScreen('screen-admin');
+    } else {
+      document.getElementById('admin-pw-error').style.display = 'block';
+    }
+  }
+
+  // --- 設定管理 ---
+  function renderSettings() {
+    const container = document.getElementById('timer-settings-list');
+    container.innerHTML = '';
+    subjects.forEach(sub => {
+      container.innerHTML += `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+          <span>${sub}</span>
+          <input type="number" min="1" max="90" value="${settingsTimes[sub] || 10}" id="setting-${sub}" style="width:80px;"> 秒
+        </div>
+      `;
+    });
+  }
+
+  function saveSettings() {
+    subjects.forEach(sub => {
+      let val = parseInt(document.getElementById(`setting-${sub}`).value);
+      if(val < 1) val = 1;
+      if(val > 90) val = 90;
+      settingsTimes[sub] = val;
+    });
+    localStorage.setItem('quiz_settings_times', JSON.stringify(settingsTimes));
+    alert('設定を保存しました');
+    showScreen('screen-home');
+  }
+
+  // --- 管理者機能 ---
+  function addQuestion() {
+    const sub = document.getElementById('new-q-subject').value;
+    const text = document.getElementById('new-q-text').value.trim();
+    const ans = document.getElementById('new-q-answer').value.trim();
+    const alt = document.getElementById('new-q-alt').value.trim();
+
+    if(!text || !ans) {
+      alert('問題文と答えを入力してください');
+      return;
+    }
+
+    questions.push({ id: Date.now(), subject: sub, text: text, answer: ans, alt: alt });
+    localStorage.setItem('quiz_questions', JSON.stringify(questions));
+    
+    document.getElementById('new-q-text').value = '';
+    document.getElementById('new-q-answer').value = '';
+    document.getElementById('new-q-alt').value = '';
+    
+    renderAdminQuestions();
+    alert('問題を追加しました');
+  }
+
+  function deleteQuestion(id) {
+    questions = questions.filter(q => q.id !== id);
+    localStorage.setItem('quiz_questions', JSON.stringify(questions));
+    renderAdminQuestions();
+  }
+
+  function renderAdminQuestions() {
+    const container = document.getElementById('admin-questions-list');
+    container.innerHTML = '';
+    if(questions.length === 0) {
+      container.innerHTML = '<p>登録されている問題はありません。</p>';
+      return;
+    }
+    questions.forEach(q => {
+      container.innerHTML += `
+        <div class="list-item">
+          <button class="del-btn" onclick="deleteQuestion(${q.id})">削除</button>
+          <strong>[${q.subject}]</strong> ${q.text}<br>
+          <small>正解: ${q.answer} ${q.alt ? '(別解: '+q.alt+')' : ''}</small>
+        </div>
+      `;
+    });
+  }
+
+  // --- クイズロジック ---
+  let activeQuizList = [];
+  let currentQIndex = 0;
+  let wrongQuestions = [];
+  let timerInterval = null;
+  let timeLeft = 0;
+
+  function startQuiz(subject) {
+    let pool = questions;
+    if(subject !== 'random') {
+      pool = questions.filter(q => q.subject === subject);
+    }
+    if(pool.length === 0) {
+      alert('この教科にはまだ問題が登録されていません。');
+      return;
+    }
+
+    let shuffled = [...pool].sort(() => 0.5 - Math.random());
+    activeQuizList = shuffled.slice(0, 10);
+    currentQIndex = 0;
+    wrongQuestions = [];
+
+    showScreen('screen-quiz');
+    loadQuestion();
+  }
+
+  function loadQuestion() {
+    clearInterval(timerInterval);
+    const q = activeQuizList[currentQIndex];
+    document.getElementById('quiz-progress').innerText = `第 ${currentQIndex + 1} 問 / ${activeQuizList.length} 問`;
+    document.getElementById('quiz-subject-tag').innerText = q.subject;
+    document.getElementById('quiz-question-text').innerText = q.text;
+    document.getElementById('quiz-user-input').value = '';
+    document.getElementById('quiz-user-input').focus();
+
+    if(settingsTimes[q.subject] === undefined) {
+      settingsTimes[q.subject] = (q.subject === '数学' || q.subject === '理科') ? 30 : 10;
+    }
+    timeLeft = settingsTimes[q.subject];
+    updateTimerDisplay();
+
+    timerInterval = setInterval(() => {
+      timeLeft--;
+      updateTimerDisplay();
+      if(timeLeft <= 0) {
+        clearInterval(timerInterval);
+        submitAnswer(true);
+      }
+    }, 1000);
+  }
+
+  function updateTimerDisplay() {
+    document.getElementById('timer-display').innerText = `残り時間: ${timeLeft} 秒`;
+  }
+
+  function submitAnswer(isTimeout = false) {
+    clearInterval(timerInterval);
+    const q = activeQuizList[currentQIndex];
+    const userInput = document.getElementById('quiz-user-input').value.trim().toLowerCase();
+    
+    let isCorrect = false;
+    if(!isTimeout && userInput !== '') {
+      const answers = [q.answer, ...(q.alt ? q.alt.split(',').map(s=>s.trim()) : [])].map(a => a.toLowerCase());
+      if(answers.includes(userInput)) {
+        isCorrect = true;
+      }
+    }
+
+    if(!isCorrect) {
+      wrongQuestions.push({ question: q, userAnswer: isTimeout ? '（時間切れ）' : (userInput || '未入力') });
+    }
+
+    currentQIndex++;
+    if(currentQIndex < activeQuizList.length) {
+      loadQuestion();
+    } else {
+      finishQuiz();
+    }
+  }
+
+  function finishQuiz() {
+    showScreen('screen-result');
+    const total = activeQuizList.length;
+    const correctCount = total - wrongQuestions.length;
+
+    document.getElementById('result-summary').innerHTML = `
+      <h3 style="text-align:center;">正解数: ${correctCount} / ${total} 問</h3>
+    `;
+
+    const details = document.getElementById('result-details');
+    details.innerHTML = '';
+
+    if(wrongQuestions.length === 0) {
+      details.innerHTML = '<h3 style="color:#2ecc71; text-align:center;">🎉 パーフェクト！全問正解です！</h3>';
+      document.getElementById('btn-retry').style.display = 'none';
+    } else {
+      details.innerHTML = '<h3>間違えた問題の復習</h3>';
+      wrongQuestions.forEach(w => {
+        details.innerHTML += `
+          <div class="list-item" style="border-left: 5px solid #e74c3c;">
+            <strong>[${w.question.subject}]</strong> ${w.question.text}<br>
+            <span style="color:#e74c3c;">あなたの回答: ${w.userAnswer}</span><br>
+            <span style="color:#2ecc71;">正解: ${w.question.answer} ${w.question.alt ? '(別解: '+w.question.alt+')' : ''}</span>
+          </div>
+        `;
+      });
+      document.getElementById('btn-retry').style.display = 'block';
+    }
+  }
+
+  function startRetry() {
+    activeQuizList = wrongQuestions.map(w => w.question);
+    currentQIndex = 0;
+    wrongQuestions = [];
+    showScreen('screen-quiz');
+    loadQuestion();
+  }
+</script>
+
+</body>
+</html>index.html
